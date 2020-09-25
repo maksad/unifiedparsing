@@ -5,6 +5,7 @@ import time
 import random
 import argparse
 from distutils.version import LooseVersion
+from lib.nn import async_copy_to
 # Numerical libs
 import numpy as np
 import torch
@@ -27,7 +28,7 @@ def train(segmentation_module, iterator, optimizers, history, epoch, args):
     names = ['object', 'part', 'scene', 'material']
     ave_losses = {n: AverageMeter() for n in names}
     ave_metric = {n: AverageMeter() for n in names}
-    ave_losses['total'] = AverageMeter() 
+    ave_losses['total'] = AverageMeter()
 
     segmentation_module.train(not args.fix_bn)
 
@@ -36,6 +37,9 @@ def train(segmentation_module, iterator, optimizers, history, epoch, args):
     for i in range(args.epoch_iters):
 
         batch_data, src_idx = next(iterator)
+        if args.num_gpus == 1:
+            batch_data = async_copy_to(batch_data, 0)  # load the batch to GPU
+            batch_data = batch_data[0]
 
         data_time.update(time.time() - tic)
 
@@ -54,11 +58,11 @@ def train(segmentation_module, iterator, optimizers, history, epoch, args):
         batch_time.update(time.time() - tic)
         tic = time.time()
 
-        # measure losses 
+        # measure losses
         for name in ret['loss'].keys():
             ave_losses[name].update(ret['loss'][name].mean().item())
 
-        # measure metrics 
+        # measure metrics
         # NOTE: scene metric will be much lower than benchmark
         for name in ret['metric'].keys():
             ave_metric[name].update(ret['metric'][name].mean().item())
@@ -67,10 +71,10 @@ def train(segmentation_module, iterator, optimizers, history, epoch, args):
         if i % args.disp_iter == 0:
             loss_info = "Loss: total {:.4f}, ".format(ave_losses['total'].average())
             loss_info += ", ".join(["{} {:.2f}".format(
-                n[0], ave_losses[n].average() 
+                n[0], ave_losses[n].average()
                 if ave_losses[n].average() is not None else 0) for n in names])
             acc_info = "Accuracy: " + ", ".join(["{} {:4.2f}".format(
-                n[0], ave_metric[n].average() 
+                n[0], ave_metric[n].average()
                 if ave_metric[n].average() is not None else 0) for n in names])
             print('Epoch: [{}][{}/{}], Time: {:.2f}, Data: {:.2f}, '
                   'LR: encoder {:.6f}, decoder {:.6f}, {}, {}'
@@ -98,7 +102,7 @@ def checkpoint(nets, history, args, epoch_num):
 
     # dict_encoder_save = {k: v for k, v in dict_encoder.items() if not (k.endswith('_tmp_running_mean') or k.endswith('tmp_running_var'))}
     # dict_decoder_save = {k: v for k, v in dict_decoder.items() if not (k.endswith('_tmp_running_mean') or k.endswith('tmp_running_var'))}
-    
+
     torch.save(history,
                '{}/history_{}'.format(args.ckpt, suffix_latest))
     torch.save(dict_encoder,
@@ -257,7 +261,7 @@ if __name__ == '__main__':
                         help='number of features between encoder and decoder')
 
     # optimization related arguments
-    parser.add_argument('--num_gpus', default=8, type=int,
+    parser.add_argument('--num_gpus', default=1, type=int,
                         help='number of gpus to use')
     parser.add_argument('--batch_size_per_gpu', default=2, type=int,
                         help='input batch size')
@@ -280,7 +284,7 @@ if __name__ == '__main__':
                         help='fix bn params')
 
     # Data related arguments
-    parser.add_argument('--workers', default=16, type=int,
+    parser.add_argument('--workers', default=1, type=int,
                         help='number of data loading workers')
     parser.add_argument('--imgSize', default=[300,375,450,525,600], nargs='+', type=int,
                         help='input image size of short edge (int or list)')

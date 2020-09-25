@@ -30,7 +30,7 @@ class SegmentationModuleBase(nn.Module):
         acc_sum = torch.sum(acc_sum * valid)
         pixel_sum = torch.sum(mask_object.view(mask_object.size(0), -1), dim=1)
         pixel_sum = torch.sum(pixel_sum * valid)
-        return acc_sum, pixel_sum 
+        return acc_sum, pixel_sum
 
     @staticmethod
     def part_loss(pred_part, gt_seg_part, gt_seg_object, object_label, valid):
@@ -92,7 +92,7 @@ class SegmentationModule(SegmentationModuleBase):
                 loss_dict['material'] = self.crit_dict['material'](pred['material'], feed_dict['seg_material'])
             loss_dict['total'] = sum([loss_dict[k] * self.loss_scale[k] for k in loss_dict.keys()])
 
-            # metric 
+            # metric
             metric_dict= {}
             if pred['object'] is not None:
                 metric_dict['object'] = self.pixel_acc(

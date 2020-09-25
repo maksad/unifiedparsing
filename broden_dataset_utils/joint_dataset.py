@@ -20,10 +20,10 @@ class BrodenDataset:
 
         """ data sets """
 
-        broden_dataset_root = "./broden_dataset"
+        broden_dataset_root = "/data/resources/broden_dataset"
 
-        # Dataset 1:    ADE20K. object, part, scene. 
-        #               use resized data, use 1 level of the part seg. 
+        # Dataset 1:    ADE20K. object, part, scene.
+        #               use resized data, use 1 level of the part seg.
         ade = adeseg.AdeSegmentation(
                 directory=os.path.join(broden_dataset_root, "ade20k"),
                 version='ADE20K_2016_07_26')
@@ -39,7 +39,7 @@ class BrodenDataset:
         #     directory=os.path.join(broden_dataset_root, "dtd", "dtd-r1.0.1"))
 
         # Dataset 4:    opensurface. material.
-        #               use resized blank removed version. 
+        #               use resized blank removed version.
         opensurface = osseg.OpenSurfaceSegmentation(
             directory=os.path.join(broden_dataset_root, "opensurfaces"))
 
@@ -58,7 +58,7 @@ class BrodenDataset:
 
         """ recover object, part, scene, material and texture. """
 
-        # recover names 
+        # recover names
         self.names = {'object': [], 'part': [], 'scene': [], 'material': [], 'texture': []}
         restore_categories = ['object', 'part', 'scene', 'material', 'texture']
         for cat in restore_categories:
@@ -68,17 +68,17 @@ class BrodenDataset:
         for cat in restore_categories:
             self.nr[cat] = len(self.names[cat])
 
-        # recover assignments 
+        # recover assignments
         self.assignments = {}
         for l in restore_csv(os.path.join(self.broden_dataset_info, 'label_assignment.csv')):
-            self.assignments[(l.dataset, l.category, int(l.raw_label))] = int(l.broden_label) 
+            self.assignments[(l.dataset, l.category, int(l.raw_label))] = int(l.broden_label)
         index_max = build_histogram(
                 [((ds, cat), i) for ds, cat, i in list(self.assignments.keys())], max)
         self.index_mapping = dict([k, numpy.zeros(i + 1, dtype=numpy.int16)] for k, i in list(index_max.items()))
         for (ds, cat, old_index), new_index in list(self.assignments.items()):
             self.index_mapping[(ds, cat)][old_index] = new_index
 
-        # recover object with part 
+        # recover object with part
         self.object_with_part, self.object_part = [], {}
         for l in restore_csv(os.path.join(self.broden_dataset_info, 'object_part_hierarchy.csv')):
             o_l = int(l.object_label)
@@ -87,20 +87,20 @@ class BrodenDataset:
         self.nr_object_with_part = len(self.object_with_part)
 
     def resolve_record(self, record):
-        # resolve records, return: 
-        #   img: 
+        # resolve records, return:
+        #   img:
         #   seg_obj, valid_obj: empty of valid_obj == 0
         #   seg_parts, valid_parts:  ith empty when valid_parts[i] == 0
         #   scene_label: empty when scene_label == -1
         #   texture_label: empty when texture_label == -1
         #   material, valid_mat: empty when valid_mat == 0
-       
+
         # decode metadata
         ds = self.data_sets[record["dataset"]]
         md = ds.metadata(record["file_index"])
         full_seg, shape = ds.resolve_segmentation(md)
 
-        # image 
+        # image
         img = ds.image_data(record["file_index"])
         seg_obj = numpy.zeros((img.shape[0], img.shape[1]), dtype=numpy.uint16)
         valid_obj = 0
@@ -110,9 +110,9 @@ class BrodenDataset:
         seg_material = numpy.zeros((img.shape[0], img.shape[1]), dtype=numpy.uint8)
         valid_mat = 0
 
-        # for ade20k and pascal datasets, we only decode seg_obj, seg_parts and scene. 
+        # for ade20k and pascal datasets, we only decode seg_obj, seg_parts and scene.
         if record['dataset'] == 'ade20k' or record['dataset'] == 'pascal':
-            # scene 
+            # scene
             if record['dataset'] == 'ade20k':
                 scene_label = self.index_mapping[('ade20k', 'scene')][md['scene']]
 
@@ -144,8 +144,8 @@ class BrodenDataset:
 
             assert img.shape[:2] == seg_obj.shape and img.shape[:2] == seg_part.shape, \
                     "dataset: {} file_index: {}".format(record["dataset"], record["file_index"])
-           
-            # decode valid obj-parts. 
+
+            # decode valid obj-parts.
             for obj_part_index in range(self.nr_object_with_part):
                 obj_label = self.object_with_part[obj_part_index]
                 valid_part_labels = self.object_part[obj_label]
@@ -154,7 +154,7 @@ class BrodenDataset:
                 present_valid_part_labels = numpy.intersect1d(
                         valid_part_labels, present_part_labels)
                 if len(present_valid_part_labels) <= 1:
-                    continue 
+                    continue
                 valid_part[obj_part_index] = True
                 for v_p_label in present_valid_part_labels:
                     v_p_index = valid_part_labels.index(v_p_label)
@@ -193,10 +193,10 @@ class BrodenDataset:
 
             return data
 
-        # only use material in os. 
+        # only use material in os.
         elif record['dataset'] == 'os':
             valid_mat = 1
-            seg_material = self.index_mapping[('os', 'material')][full_seg['material']] 
+            seg_material = self.index_mapping[('os', 'material')][full_seg['material']]
             seg_material = numpy.asarray(seg_material, dtype=numpy.uint8)
 
             data = {
