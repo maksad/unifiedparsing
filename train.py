@@ -306,7 +306,7 @@ if __name__ == '__main__':
     # optimization related arguments
     parser.add_argument('--num_gpus', default=1, type=int,
                         help='number of gpus to use')
-    parser.add_argument('--batch_size_per_gpu', default=2, type=int,
+    parser.add_argument('--batch_size_per_gpu', default=8, type=int,
                         help='input batch size')
     parser.add_argument('--num_epoch', default=40, type=int,
                         help='epochs to train for')
@@ -329,9 +329,9 @@ if __name__ == '__main__':
     # Data related arguments
     parser.add_argument('--workers', default=1, type=int,
                         help='number of data loading workers')
-    parser.add_argument('--imgSize', default=[300,375,450,525,600], nargs='+', type=int,
+    parser.add_argument('--imgSize', default=[150,200,250,300,400], nargs='+', type=int,
                         help='input image size of short edge (int or list)')
-    parser.add_argument('--imgMaxSize', default=1000, type=int,
+    parser.add_argument('--imgMaxSize', default=500, type=int,
                         help='maximum input image size of long edge')
     parser.add_argument('--padding_constant', default=32, type=int,
                         help='maxmimum downsampling rate of the network')

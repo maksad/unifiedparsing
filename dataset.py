@@ -78,7 +78,7 @@ class TrainDataset(torchdata.Dataset):
             self.cur_idx += 1
             if self.cur_idx >= self.num_sample:
                 self.cur_idx = 0
-                np.random.shuffle(self.list_sample)
+                # np.random.shuffle(self.list_sample)
 
             if len(self.batch_record_list[0]) == self.batch_per_gpu:
                 batch_records = self.batch_record_list[0]
@@ -92,9 +92,9 @@ class TrainDataset(torchdata.Dataset):
 
     def __getitem__(self, index):
         # NOTE: random shuffle for the first time. shuffle in __init__ is useless
-        if not self.if_shuffled:
-            np.random.shuffle(self.list_sample)
-            self.if_shuffled = True
+        # if not self.if_shuffled:
+        #     np.random.shuffle(self.list_sample)
+        #     self.if_shuffled = True
 
         # get sub-batch candidates
         batch_records = self._get_sub_batch()
@@ -153,13 +153,13 @@ class TrainDataset(torchdata.Dataset):
             batch_scene_labels[i] = int(scene_label)
 
             # random flip img obj part material
-            if self.random_flip:
-                random_flip = np.random.choice([0, 1])
-                if random_flip == 1:
-                    img = cv2.flip(img, 1)
-                    seg_obj = cv2.flip(seg_obj, 1)
-                    seg_part = np.flip(seg_part, 2)
-                    seg_material = cv2.flip(seg_material, 1)
+            # if self.random_flip:
+            #     random_flip = np.random.choice([0, 1])
+            #     if random_flip == 1:
+            #         img = cv2.flip(img, 1)
+            #         seg_obj = cv2.flip(seg_obj, 1)
+            #         seg_part = np.flip(seg_part, 2)
+            #         seg_material = cv2.flip(seg_material, 1)
 
             # img
             img = imresize(img, (batch_resized_size[i, 0], batch_resized_size[i, 1]), interp='bilinear')
