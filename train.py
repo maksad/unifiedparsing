@@ -1,5 +1,6 @@
 # System libs
 import os
+import json
 import time
 # import math
 import random
@@ -18,6 +19,7 @@ from lib.nn import UserScatteredDataParallel, user_scattered_collate, patch_repl
 import lib.utils.data as torchdata
 
 from broden_dataset_utils.joint_dataset import broden_dataset
+from plot import plot_history
 
 
 # train one epoch
@@ -31,6 +33,23 @@ def train(segmentation_module, iterator, optimizers, history, epoch, args):
     ave_losses['total'] = AverageMeter()
 
     segmentation_module.train(not args.fix_bn)
+
+    progress = {
+        'epoch': [],
+        'episode': [],
+        'lr.encoder': [],
+        'lr.decoder': [],
+        'loss.object': [],
+        'loss.part': [],
+        'loss.scene': [],
+        'loss.material': [],
+        'loss.total': [],
+        'accuracy.object': [],
+        'accuracy.part': [],
+        'accuracy.scene': [],
+        'accuracy.material': [],
+        'accuracy.total': [],
+    }
 
     # main loop
     tic = time.time()
@@ -67,6 +86,24 @@ def train(segmentation_module, iterator, optimizers, history, epoch, args):
         for name in ret['metric'].keys():
             ave_metric[name].update(ret['metric'][name].mean().item())
 
+        progress['epoch'].append(epoch)
+        progress['episode'].append(i)
+
+        progress['lr.encoder'].append(args.running_lr_encoder)
+        progress['lr.decoder'].append(args.running_lr_decoder)
+
+        progress['accuracy.object'].append(ave_metric['object'].value())
+        progress['accuracy.part'].append(ave_metric['part'].value())
+        progress['accuracy.scene'].append(ave_metric['scene'].value())
+        progress['accuracy.material'].append(ave_metric['material'].value())
+        progress['accuracy.total'].append(None)
+
+        progress['loss.object'].append(ave_losses['object'].value())
+        progress['loss.part'].append(ave_losses['part'].value())
+        progress['loss.scene'].append(ave_losses['scene'].value())
+        progress['loss.material'].append(ave_losses['material'].value())
+        progress['loss.total'].append(ave_losses['total'].value())
+
         # calculate accuracy, and display
         if i % args.disp_iter == 0:
             loss_info = "Loss: total {:.4f}, ".format(ave_losses['total'].average())
@@ -76,6 +113,7 @@ def train(segmentation_module, iterator, optimizers, history, epoch, args):
             acc_info = "Accuracy: " + ", ".join(["{} {:4.2f}".format(
                 n[0], ave_metric[n].average()
                 if ave_metric[n].average() is not None else 0) for n in names])
+
             print('Epoch: [{}][{}/{}], Time: {:.2f}, Data: {:.2f}, '
                   'LR: encoder {:.6f}, decoder {:.6f}, {}, {}'
                   .format(epoch, i, args.epoch_iters,
@@ -86,6 +124,11 @@ def train(segmentation_module, iterator, optimizers, history, epoch, args):
             fractional_epoch = epoch - 1 + 1. * i / args.epoch_iters
             history['train']['epoch'].append(fractional_epoch)
             history['train']['loss'].append(loss.item())
+
+            path = f'./ckpt/{args.id}/history'
+            torch.save(progress, f'{path}.pth')
+            plot_history(f'{path}.pth', f'{path}_plot')
+            print('\nprogress saved...')
 
         # adjust learning rate
         cur_iter = i + (epoch - 1) * args.epoch_iters
